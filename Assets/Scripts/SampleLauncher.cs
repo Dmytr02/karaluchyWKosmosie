@@ -1,10 +1,11 @@
+using System;
 using Photon.Pun;
 using UnityEngine;
 
 public class SampleLauncher : MonoBehaviourPunCallbacks
 {
     public PhotonView playerPrefab;
-    void Start()
+    /*void Start()
     {
         PhotonNetwork.ConnectUsingSettings();
     }
@@ -13,11 +14,16 @@ public class SampleLauncher : MonoBehaviourPunCallbacks
     {
         Debug.Log("OnConnectedToMaster");
         PhotonNetwork.JoinRandomOrCreateRoom();
-    }
+    }*/
 
-    public override void OnJoinedRoom()
+    /*public override void OnJoinedRoom()
     {
         Debug.Log("OnJoinedRoom");
+        PhotonNetwork.Instantiate(playerPrefab.name, Vector3.zero, Quaternion.identity, 0);
+    }*/
+
+    private void Start()
+    {
         PhotonNetwork.Instantiate(playerPrefab.name, Vector3.zero, Quaternion.identity, 0);
     }
 }
