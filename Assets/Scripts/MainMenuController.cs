@@ -43,7 +43,7 @@ public class MainMenuController : MonoBehaviourPunCallbacks
     
     public void OnJoinRoom()
     {
-        PhotonNetwork.JoinRoom(createRoomName.text);
+        PhotonNetwork.JoinRoom(joinRoomName.text);
     }
 
     public override void OnJoinedRoom()
