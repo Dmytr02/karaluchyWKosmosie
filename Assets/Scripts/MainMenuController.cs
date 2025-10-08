@@ -15,7 +15,13 @@ public class MainMenuController : MonoBehaviourPunCallbacks
     {
         PhotonNetwork.ConnectUsingSettings();  // Connect to Photon
     }
-    
+
+    public override void OnConnectedToMaster()
+    {
+        base.OnConnectedToMaster();
+        Debug.Log("OnConnectedToMaster");
+    }
+
     public void NewGame()
     {
         mainMenuPanel.SetActive(false);

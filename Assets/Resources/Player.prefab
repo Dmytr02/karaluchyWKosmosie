@@ -182,6 +182,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterController: {fileID: -1449269225948917600}
   speed: 2
+  runSpeed: 5
   gravity: 9.8
   jumpForce: 4
 --- !u!143 &-1449269225948917600

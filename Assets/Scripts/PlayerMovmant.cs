@@ -1,32 +1,63 @@
+using ExitGames.Client.Photon;
 using Photon.Pun;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class PlayerMovmant : MonoBehaviourPunCallbacks
 {
     [SerializeField] CharacterController characterController;
     [SerializeField] float speed = 2.0f;
+    [SerializeField] float runSpeed = 2.0f;
     [SerializeField] float gravity = 9.8f;
     [SerializeField] float jumpForce = 10;
     
-    DynamicJoystick joystick;
+    Joystick joystick;
     
     float yForce = 0;
+    bool isRunning = false;
     void Start()
     {
-        if (photonView.IsMine) Camera.main.transform.SetParent(transform);
+        if (photonView.IsMine)
+        {
+            Camera.main.transform.SetParent(transform);
+            Camera.main.transform.localPosition = Vector3.zero;
+            Camera.main.transform.localRotation = Quaternion.identity;
+            
+            EventTrigger.Entry entry = new EventTrigger.Entry();
+            entry.eventID = EventTriggerType.PointerDown;
+            entry.callback.AddListener((eventData) =>{Jump();});
+            SelfUI.instance.eventTriggerJumpButon.triggers.Add(entry);
+            
+            entry = new EventTrigger.Entry();
+            entry.eventID = EventTriggerType.Drag;
+            entry.callback.AddListener((eventData) =>{RotateCamera((PointerEventData)eventData);});
+            SelfUI.instance.eventTriggerFullScrean.triggers.Add(entry);
+            
+            entry = new EventTrigger.Entry();
+            entry.eventID = EventTriggerType.PointerDown;
+            entry.callback.AddListener((eventData) =>{isRunning = !isRunning;});
+            SelfUI.instance.eventTriggerRunButon.triggers.Add(entry);
+        }
         else enabled = false;
+    }
+
+    private void Jump()
+    {
+        if(characterController.isGrounded) yForce = jumpForce;
+    }
+
+    private void RotateCamera(PointerEventData photonEvent)
+    {
+        transform.rotation *= Quaternion.Euler(0, photonEvent.delta.x, 0);
+        Camera.main.transform.rotation = Quaternion.Euler(Mathf.Clamp((Camera.main.transform.rotation.eulerAngles.x-photonEvent.delta.y>180 ? -360 : 0) + Camera.main.transform.rotation.eulerAngles.x-photonEvent.delta.y, -60, 60), Camera.main.transform.rotation.eulerAngles.y, 0);
     }
 
     // Update is called once per frame
     void Update()
     {
-        /*#if UNITY_EDITOR
-        Vector3 direction = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
-        #else*/
+        float speed = isRunning ? runSpeed : this.speed;
         Vector3 direction = new Vector3(SelfUI.instance.joystick.Horizontal, 0, SelfUI.instance.joystick.Vertical);
-        /*#endif*/
-        if(Input.GetButtonDown("Jump")) yForce = jumpForce;
-        characterController.Move((direction.normalized*speed+new Vector3(0, yForce, 0))*Time.deltaTime);
+        characterController.Move((transform.rotation*direction.normalized*speed+new Vector3(0, yForce, 0))*Time.deltaTime);
         yForce -= gravity *Time.deltaTime;
     }
 }
