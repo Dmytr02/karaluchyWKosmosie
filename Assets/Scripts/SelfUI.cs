@@ -8,9 +8,9 @@ public class SelfUI : MonoBehaviour
     
     public static SelfUI instance;
 
-	public EventTrigger eventTriggerJumpButon;
-	public EventTrigger eventTriggerRunButon;
-	public EventTrigger eventTriggerFullScrean;
+	public MultiTouchEventTrigger eventTriggerJumpButon;
+	public MultiTouchEventTrigger eventTriggerRunButon;
+	public MultiTouchEventTrigger eventTriggerFullScrean;
     
 
     private void Awake()

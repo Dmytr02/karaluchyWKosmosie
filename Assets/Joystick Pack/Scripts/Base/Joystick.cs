@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class Joystick : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
+[RequireComponent(typeof(MultiTouchEventTrigger))]
+public class Joystick : MonoBehaviour
 {
     public float Horizontal { get { return (snapX) ? SnapFloat(input.x, AxisOptions.Horizontal) : input.x; } }
     public float Vertical { get { return (snapY) ? SnapFloat(input.y, AxisOptions.Vertical) : input.y; } }
@@ -33,6 +34,8 @@ public class Joystick : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoint
 
     [SerializeField] protected RectTransform background = null;
     [SerializeField] private RectTransform handle = null;
+    
+    [SerializeField] private MultiTouchEventTrigger multiTouchEventTrigger;
     private RectTransform baseRect = null;
 
     private Canvas canvas;
@@ -42,6 +45,12 @@ public class Joystick : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoint
 
     protected virtual void Start()
     {
+        if(!multiTouchEventTrigger) multiTouchEventTrigger = GetComponent<MultiTouchEventTrigger>();
+        
+        multiTouchEventTrigger.OnPointerDownEvent.AddListener(OnPointerDown);
+        multiTouchEventTrigger.OnDragEvent.AddListener(OnDrag);
+        multiTouchEventTrigger.OnPointerUpEvent.AddListener(OnPointerUp);
+        
         HandleRange = handleRange;
         DeadZone = deadZone;
         baseRect = GetComponent<RectTransform>();

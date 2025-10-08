@@ -22,21 +22,12 @@ public class PlayerMovmant : MonoBehaviourPunCallbacks
             Camera.main.transform.SetParent(transform);
             Camera.main.transform.localPosition = Vector3.zero;
             Camera.main.transform.localRotation = Quaternion.identity;
+
+            SelfUI.instance.eventTriggerJumpButon.OnPointerDownEvent.AddListener((eventData) =>{Jump();});
             
-            EventTrigger.Entry entry = new EventTrigger.Entry();
-            entry.eventID = EventTriggerType.PointerDown;
-            entry.callback.AddListener((eventData) =>{Jump();});
-            SelfUI.instance.eventTriggerJumpButon.triggers.Add(entry);
+            SelfUI.instance.eventTriggerFullScrean.OnDragEvent.AddListener((eventData) =>{RotateCamera((PointerEventData)eventData);});
             
-            entry = new EventTrigger.Entry();
-            entry.eventID = EventTriggerType.Drag;
-            entry.callback.AddListener((eventData) =>{RotateCamera((PointerEventData)eventData);});
-            SelfUI.instance.eventTriggerFullScrean.triggers.Add(entry);
-            
-            entry = new EventTrigger.Entry();
-            entry.eventID = EventTriggerType.PointerDown;
-            entry.callback.AddListener((eventData) =>{isRunning = !isRunning;});
-            SelfUI.instance.eventTriggerRunButon.triggers.Add(entry);
+            SelfUI.instance.eventTriggerRunButon.OnPointerDownEvent.AddListener((eventData) =>{isRunning = !isRunning;});
         }
         else enabled = false;
     }
