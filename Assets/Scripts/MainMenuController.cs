@@ -19,7 +19,7 @@ public class MainMenuController : MonoBehaviourPunCallbacks
     public override void OnConnectedToMaster()
     {
         base.OnConnectedToMaster();
-        Debug.Log("OnConnectedToMaster");
+        MainMenu();
     }
 
     public void NewGame()

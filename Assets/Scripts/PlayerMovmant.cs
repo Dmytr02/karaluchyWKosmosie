@@ -1,7 +1,10 @@
+using System;
 using ExitGames.Client.Photon;
 using Photon.Pun;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
+
 
 public class PlayerMovmant : MonoBehaviourPunCallbacks
 {
@@ -10,15 +13,31 @@ public class PlayerMovmant : MonoBehaviourPunCallbacks
     [SerializeField] float runSpeed = 2.0f;
     [SerializeField] float gravity = 9.8f;
     [SerializeField] float jumpForce = 10;
+    [SerializeField] float interactDistance = 5;
+    
+    public Transform hand;
+    public MovableObject movableInHand;
     
     Joystick joystick;
     
     float yForce = 0;
     bool isRunning = false;
+
+    public static PlayerMovmant Instance;
+    
+    public bool canRotateCamera = true;
+    
+    private IInteractable isInteraction;
+    public int InteractID = -1;
+    
     void Start()
     {
         if (photonView.IsMine)
         {
+            Instance = this;
+            
+            GetComponent<Renderer>().enabled = false;
+            
             Camera.main.transform.SetParent(transform);
             Camera.main.transform.localPosition = Vector3.zero;
             Camera.main.transform.localRotation = Quaternion.identity;
@@ -26,23 +45,60 @@ public class PlayerMovmant : MonoBehaviourPunCallbacks
             SelfUI.instance.eventTriggerJumpButon.OnPointerDownEvent.AddListener((eventData) =>{Jump();});
             
             SelfUI.instance.eventTriggerFullScrean.OnDragEvent.AddListener((eventData) =>{RotateCamera((PointerEventData)eventData);});
+            SelfUI.instance.eventTriggerFullScrean.OnPointerDownEvent.AddListener((eventData) =>{OnPointerDown(eventData);});
+            SelfUI.instance.eventTriggerFullScrean.OnPointerUpEvent.AddListener((eventData) =>{OnPointerUp(eventData);});
             
-            SelfUI.instance.eventTriggerRunButon.OnPointerDownEvent.AddListener((eventData) =>{isRunning = !isRunning;});
+            SelfUI.instance.eventTriggerRunButon.OnPointerDownEvent.AddListener((eventData) => { RunOrDropObject();});
         }
         else enabled = false;
     }
-
+    
     private void Jump()
     {
         if(characterController.isGrounded) yForce = jumpForce;
     }
 
+    private void RunOrDropObject()
+    {
+        if(movableInHand) photonView.RPC("Drop", RpcTarget.All);
+        else isRunning = !isRunning;
+    }
+
     private void RotateCamera(PointerEventData photonEvent)
     {
+        if (isInteraction != null && InteractID == photonEvent.pointerId)
+        {
+            isInteraction.Drag(this, photonEvent);
+            return;
+        }
+        if(!canRotateCamera) return;
         transform.rotation *= Quaternion.Euler(0, photonEvent.delta.x, 0);
         Camera.main.transform.rotation = Quaternion.Euler(Mathf.Clamp((Camera.main.transform.rotation.eulerAngles.x-photonEvent.delta.y>180 ? -360 : 0) + Camera.main.transform.rotation.eulerAngles.x-photonEvent.delta.y, -60, 60), Camera.main.transform.rotation.eulerAngles.y, 0);
     }
 
+    private void OnPointerDown(PointerEventData eventData)
+    {
+        if(isRunning) return;
+        if (Physics.Raycast(Camera.main.ScreenPointToRay(eventData.position), out RaycastHit hit, interactDistance))
+        {
+            if (hit.transform.TryGetComponent(out IInteractable interactable))
+            {
+                isInteraction = interactable;
+                InteractID = eventData.pointerId;
+                interactable.StartInteraction(this);
+            }
+        }
+    }
+
+    private void OnPointerUp(PointerEventData eventData)
+    {
+        if (isInteraction != null && eventData.pointerId == InteractID)
+        {
+            isInteraction.EndInteraction(this);
+            isInteraction = null;
+        }
+    }
+    
     // Update is called once per frame
     void Update()
     {
@@ -51,4 +107,31 @@ public class PlayerMovmant : MonoBehaviourPunCallbacks
         characterController.Move((transform.rotation*direction.normalized*speed+new Vector3(0, yForce, 0))*Time.deltaTime);
         yForce -= gravity *Time.deltaTime;
     }
+    
+    [PunRPC]
+    public void PickUp(int objID)
+    {
+        PhotonView obj = PhotonView.Find(objID);
+        obj.transform.SetParent(hand);
+        obj.transform.localPosition = Vector3.zero;
+        movableInHand = obj.GetComponent<MovableObject>();
+        movableInHand.isCaring = true;
+    }
+    
+    [PunRPC]
+    public void Drop() 
+    {
+        movableInHand.GetComponent<MovableObject>().isCaring = false;
+        movableInHand.transform.SetParent(null);
+        movableInHand = null;
+    }
+    
+    
+}
+
+interface IInteractable
+{
+    public void StartInteraction(PlayerMovmant player);
+    public void Drag(PlayerMovmant player, PointerEventData eventData);
+    public void EndInteraction(PlayerMovmant player);
 }
