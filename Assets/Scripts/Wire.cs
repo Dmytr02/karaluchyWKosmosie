@@ -6,10 +6,12 @@ using UnityEngine.EventSystems;
 [RequireComponent(typeof(LineRenderer))]
 public class Wire : MonoBehaviour,  IInteractable
 {
-    private Vector3 StartPos;
+    public Vector3 StartPos;
     [SerializeField] private Vector3 StartPos2;
     [SerializeField] private Transform EndPos;
     LineRenderer lineRenderer;
+    
+    public ConnectingWires connectingWires;
 
     private void Start()
     {
@@ -33,6 +35,7 @@ public class Wire : MonoBehaviour,  IInteractable
 
     public void Drag(PlayerMovmant player, PointerEventData eventData)
     {
+        if(connectingWires.endTime <= DateTime.Now) return;
         if (Physics.Raycast(Camera.main.ScreenPointToRay(eventData.position), out RaycastHit hit, Mathf.Infinity,
                 LayerMask.GetMask("ConnectingWires")))
         {
@@ -47,6 +50,7 @@ public class Wire : MonoBehaviour,  IInteractable
             transform.position = EndPos.position;
             Update();
             enabled = false;
+            connectingWires.TryToVerify();
         }
         else
         {

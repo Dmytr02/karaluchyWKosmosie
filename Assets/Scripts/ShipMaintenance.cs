@@ -1,26 +1,37 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using Photon.Pun;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.Serialization;
+using UnityEngine.UI;
+using Random = UnityEngine.Random;
 
-public class ConnectingWires : MonoBehaviourPunCallbacks, IInteractable
+
+public class ShipMaintenance : MonoBehaviourPunCallbacks, IInteractable
 {
-    bool _isCanInteracting = true;
-    
     [SerializeField] private Button exitButton;
-    [SerializeField] private Wire[] wires;
-
+    [SerializeField] Button[] buttons;
+    Image[] images;
+    
+    [SerializeField] bool _isCanInteracting = true;
+    
     [SerializeField] private int time = 30;
     [SerializeField] private TMPro.TMP_Text timerText;
-    public DateTime endTime = DateTime.Now; 
-
+    public DateTime endTime = DateTime.Now;
+    private float duration = 3;
+    
+    Vector2 frequency = new Vector2(2f, 1f);
+    
+    private HashSet<int> indicated =  new HashSet<int>();
+    
     public bool IsCanInteracting
     {
         get { return _isCanInteracting; }
         set { photonView.RPC("SetIsCanInteracting", RpcTarget.All, value); }
     }
+
+    [SerializeField] private ShipMaintenance secondObj;
 
     [PunRPC]
     void SetIsCanInteracting(bool value)
@@ -30,38 +41,71 @@ public class ConnectingWires : MonoBehaviourPunCallbacks, IInteractable
 
     private void Start()
     {
-        exitButton.OnInteract.AddListener(EndInteraction);
+        images = new Image[buttons.Length];
+        for(int i = 0; i < buttons.Length; i++)
+        {
+            images[i] = buttons[i].transform.GetChild(0).GetComponent<Image>();
+            int i1 = i;
+            buttons[i].OnInteract.AddListener((player)=>clickbuton(i1));
+        }
+        exitButton.OnInteract.AddListener(Exit);
     }
 
     private void Update()
     {
-        if (endTime > DateTime.Now)
+        if (!_isCanInteracting && !secondObj.IsCanInteracting && endTime <= DateTime.Now)
         {
-            timerText.gameObject.SetActive(true);
-            timerText.text = (endTime-DateTime.Now).ToString("ss");
+            StartCoroutine("Game");
+            Debug.Log("endTime");
         }
-        else 
+    }
+
+    IEnumerator Game()
+    {
+        endTime = DateTime.Now.AddSeconds(time);
+        while (endTime > DateTime.Now)
         {
-            timerText.gameObject.SetActive(false);
-            if(exitButton.isActiveAndEnabled) Restart();
+            float t = (float)(endTime - DateTime.Now).Seconds / time;
+            yield return new WaitForSeconds(Mathf.Lerp(frequency.x, frequency.y, t));
+            int index = Random.Range(0, buttons.Length);
+            indicated.Add(index);
+            StartCoroutine("ImageAnim", index);
+        }
+    }
+
+    IEnumerator ImageAnim(int i)
+    {
+        float time = 0;
+        while (time < duration && indicated.Contains(i))
+        {
+            images[i].transform.localScale = Vector3.one*(time/duration);
+            time += Time.deltaTime;
+            yield return null;
+        }
+        images[i].transform.localScale = Vector3.zero;
+        if (indicated.Contains(i))
+        {
+            Restart();
         }
     }
 
     void Restart()
     {
-        foreach (Wire wire in wires)
+        Debug.Log("restart");
+    }
+    
+    void clickbuton(int i)
+    {
+        if (!indicated.Remove(i))
         {
-            wire.transform.position = wire.StartPos;
-            wire.enabled = true;
+            Restart();
         }
-        endTime = DateTime.Now.AddSeconds(time);
     }
 
     public void StartInteraction(PlayerMovmant player)
     {
         if (IsCanInteracting)
         {
-            endTime = DateTime.Now.AddSeconds(time);
             StartCoroutine(SetCameraPosition(new Vector3(0, 0, -2), transform));
             IsCanInteracting = false;
             exitButton.gameObject.SetActive(true);
@@ -71,25 +115,7 @@ public class ConnectingWires : MonoBehaviourPunCallbacks, IInteractable
             PlayerMovmant.Instance.canRotateCamera = false;
         }
     }
-
-    public void Drag(PlayerMovmant player, PointerEventData eventData)
-    {
-        
-    }
-
-    void IInteractable.EndInteraction(PlayerMovmant player)
-    {
-        
-    }
-
-    public void TryToVerify()
-    {
-        for (int i = 0; i < wires.Length; i++) if (wires[i].enabled) return;
-        
-        Debug.Log("PassVerifyConnectingWires");
-    }
-
-    void EndInteraction(PlayerMovmant player)
+    void Exit(PlayerMovmant player)
     {
         StartCoroutine(SetCameraPosition(Vector3.zero, player.transform));
         IsCanInteracting = true;
@@ -98,14 +124,7 @@ public class ConnectingWires : MonoBehaviourPunCallbacks, IInteractable
         SelfUI.instance.eventTriggerRunButon.gameObject.SetActive(true);
         SelfUI.instance.joystick.gameObject.SetActive(true);
         PlayerMovmant.Instance.canRotateCamera = true;
-        endTime = DateTime.Now;
-        foreach (Wire wire in wires)
-        {
-            wire.transform.position = wire.StartPos;
-            wire.enabled = true;
-        }
     }
-
     IEnumerator SetCameraPosition(Vector3 position, Transform parentTransform)
     {
         Vector3 targetPos = parentTransform.localToWorldMatrix.MultiplyPoint(position);
@@ -119,4 +138,16 @@ public class ConnectingWires : MonoBehaviourPunCallbacks, IInteractable
         Camera.main.transform.position = targetPos;
         Camera.main.transform.rotation = rotation;
     }
+
+    public void Drag(PlayerMovmant player, PointerEventData eventData)
+    {
+        
+    }
+
+    public void EndInteraction(PlayerMovmant player)
+    {
+        
+    }
+    
+    
 }
