@@ -68,6 +68,7 @@ public class ShipMaintenance : MonoBehaviourPunCallbacks, IInteractable
             float t = (float)(endTime - DateTime.Now).Seconds / time;
             yield return new WaitForSeconds(Mathf.Lerp(frequency.x, frequency.y, t));
             int index = Random.Range(0, buttons.Length);
+            while(indicated.Contains(index)) index = Random.Range(0, buttons.Length);
             indicated.Add(index);
             StartCoroutine("ImageAnim", index);
         }
