@@ -45,6 +45,10 @@ MonoBehaviour:
   - Drop
   - setValue
   - SetIsCanInteracting
+  - Restart
+  - isRunningRPC
+  - StartMiniGame
+  - StartMiniGameRPC
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1
