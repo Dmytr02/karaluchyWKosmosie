@@ -22,6 +22,7 @@ public class PlayerAnimationController : MonoBehaviour
 
     public void PlayStepOneShot()
     {
-        audioSource.PlayOneShot(audioClip[Random.Range(0, audioClip.Length)]);
+        audioSource.pitch = Random.Range(0.95f, 1.05f);
+        audioSource.PlayOneShot(audioClip[Random.Range(0, audioClip.Length)],  Random.Range(0.8f, 1f));
     }
 }

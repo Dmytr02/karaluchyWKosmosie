@@ -5,6 +5,7 @@ using Photon.Pun;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
+using Random = UnityEngine.Random;
 
 [RequireComponent(typeof(PhotonView))]
 public class WeldingPunctures : MonoBehaviourPunCallbacks, IInteractable, IMiniGame
@@ -61,6 +62,16 @@ public class WeldingPunctures : MonoBehaviourPunCallbacks, IInteractable, IMiniG
     private void Start()
     {
         _exitButton.OnInteract.AddListener(EndInteraction);
+        Vector2 start;
+        if (Random.Range(0, 2) == 0)
+            start = new Vector2(-0.5f, Random.Range(-0.3f, 0.3f));
+        else
+            start = new Vector2(Random.Range(-0.3f, 0.3f), -0.5f);
+        correctLine = Generate(start: start,
+            end: -start,
+            segmentLength: 0.05f,
+            maxTurnAngleDeg: 25f
+        );
         correctLineRenderer.positionCount = correctLine.Count;
         for (int i = 0; i < correctLine.Count; i++)
             correctLineRenderer.SetPosition(i, transform.localToWorldMatrix.MultiplyPoint((Vector3)correctLine[i]+new Vector3(0, 0, -0.51f)));
@@ -184,5 +195,68 @@ public class WeldingPunctures : MonoBehaviourPunCallbacks, IInteractable, IMiniG
     {
         if(needToFix) return "<color=#FF0000>Welding Punctures need to fix</color>\n";
         return "";
+    }
+    
+    public static List<Vector2> Generate(
+        Vector2 start,
+        Vector2 end,
+        float segmentLength,
+        float maxTurnAngleDeg,
+        int maxAttempts = 200)
+    {
+        float maxTurn = maxTurnAngleDeg * Mathf.Deg2Rad;
+        var points = new List<Vector2> { start };
+
+        Vector2 prevDir = (end - start).normalized;
+
+        for (int i = 0; i < maxAttempts; i++)
+        {
+            // Попытки найти подходящее направление
+            bool found = false;
+            for (int attempt = 0; attempt < 50; attempt++)
+            {
+                // Выбираем случайный допустимый угол
+                float angle = Random.Range(-maxTurn, maxTurn);
+                Vector2 dir = Rotate(prevDir, angle);
+
+                Vector2 candidate = points[^1] + dir * segmentLength;
+
+                // Ограничение квадрата
+                if (Mathf.Abs(candidate.x) > 0.5f || Mathf.Abs(candidate.y) > 0.5f)
+                    continue;
+
+                points.Add(candidate);
+                prevDir = dir;
+                found = true;
+                break;
+            }
+
+            // Если ничего не нашли — откат
+            if (!found)
+            {
+                if (points.Count > 1)
+                {
+                    points.RemoveAt(points.Count - 1);
+                    prevDir = (points[^1] - points[^2]).normalized;
+                    continue;
+                }
+                else break;
+            }
+
+            // Проверяем попадание в конец
+            if (Vector2.Distance(points[^1], end) < segmentLength)
+            {
+                points.Add(end);
+                return points;
+            }
+        }
+
+        return points; // best-effort
+    }
+
+    private static Vector2 Rotate(Vector2 v, float angle)
+    {
+        float c = Mathf.Cos(angle), s = Mathf.Sin(angle);
+        return new Vector2(v.x * c - v.y * s, v.x * s + v.y * c);
     }
 }
