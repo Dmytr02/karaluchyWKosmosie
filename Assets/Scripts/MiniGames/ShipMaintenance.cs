@@ -10,6 +10,7 @@ using Random = UnityEngine.Random;
 
 public class ShipMaintenance : MonoBehaviourPunCallbacks, IInteractable, IMiniGame
 {
+    [SerializeField] private ConnectingWires connectingWires;
     [SerializeField] private Button exitButton;
     [SerializeField] Button[] buttons;
     Image[] images;
@@ -26,6 +27,10 @@ public class ShipMaintenance : MonoBehaviourPunCallbacks, IInteractable, IMiniGa
     private HashSet<int> indicated =  new HashSet<int>();
     
     public bool needToFix = true;
+
+    public static float DirectionAccuracy = 1;
+    
+    [SerializeField] private float directionAccuracydecrice = 0;
     
     public bool IsCanInteracting
     {
@@ -55,11 +60,12 @@ public class ShipMaintenance : MonoBehaviourPunCallbacks, IInteractable, IMiniGa
 
     private void Update()
     {
+        if(NetworkController.IsGameStarted) DirectionAccuracy = Mathf.Clamp01(DirectionAccuracy - Time.deltaTime*directionAccuracydecrice);
         if (endTime.AddSeconds(1) > DateTime.Now)
         {
             timerText.text = (endTime-DateTime.Now).ToString("ss");
         }
-        else if (!_isCanInteracting && !secondObj.IsCanInteracting && needToFix)
+        else if (!_isCanInteracting && !secondObj.IsCanInteracting && exitButton.isActiveAndEnabled)
         {
             StartCoroutine("Game");
             Debug.Log("endTime");
@@ -80,6 +86,8 @@ public class ShipMaintenance : MonoBehaviourPunCallbacks, IInteractable, IMiniGa
             StartCoroutine("ImageAnim", index);
         }
         needToFix = false;
+        DirectionAccuracy += 0.4f;
+        Exit(PlayerMovmant.Instance);
     }
 
     IEnumerator ImageAnim(int i)
@@ -118,7 +126,7 @@ public class ShipMaintenance : MonoBehaviourPunCallbacks, IInteractable, IMiniGa
 
     public void StartInteraction(PlayerMovmant player)
     {
-        if(!needToFix) return;
+        //if(connectingWires.needToFix) return;
         if (IsCanInteracting)
         {
             StartCoroutine(SetCameraPosition(new Vector3(0, 0, -1200), transform));
@@ -172,8 +180,8 @@ public class ShipMaintenance : MonoBehaviourPunCallbacks, IInteractable, IMiniGa
 
     public string GetMassage()
     {
-        if(needToFix) return "<color=#FF0000>Ship Maintenance need to fix</color>\n";
-        return "";
+        //if(needToFix) return "<color=#FF0000>Ship Maintenance need to fix</color>\n";
+        return $"Direction Accuracy: {(int)(DirectionAccuracy*100)}%\n{(DirectionAccuracy<0.6f?"<indent=5%><color=#FFFF00>if this indicator is low, you will reach your goal slower.</color></indent>\n":"")}{(DirectionAccuracy<0.4f?"<indent=5%><color=#FF0000>Use the side screens to correct the direction of movement!</color></indent>\n":"")}";
     }
 
     [PunRPC]

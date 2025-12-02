@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Photon.Pun;
 using UnityEngine;
 using UnityEngine.Events;
@@ -18,8 +19,13 @@ public class WeldingPunctures : MonoBehaviourPunCallbacks, IInteractable, IMiniG
     [SerializeField] private LineRenderer lineRenderer;
     [SerializeField] private LineRenderer correctLineRenderer;
     [SerializeField] private float segmentLength = 0.05f;
+    
+    [SerializeField] private GameObject segmentPrefab;
+    [SerializeField] private GameObject segmentPrefab2;
 
     public UnityEvent<WeldingPunctures> OnDestroyEvent;
+
+    public string place = "";
 
     private void OnDestroy()
     {
@@ -61,7 +67,7 @@ public class WeldingPunctures : MonoBehaviourPunCallbacks, IInteractable, IMiniG
 
     private void Start()
     {
-        _exitButton.OnInteract.AddListener(EndInteraction);
+        _exitButton.OnInteract.AddListener(End);
         Vector2 start;
         if (Random.Range(0, 2) == 0)
             start = new Vector2(-0.5f, Random.Range(-0.3f, 0.3f));
@@ -72,6 +78,16 @@ public class WeldingPunctures : MonoBehaviourPunCallbacks, IInteractable, IMiniG
             segmentLength: 0.05f,
             maxTurnAngleDeg: 25f
         );
+        SpawnAlongLine(correctLine.Select(n=>transform.localToWorldMatrix.MultiplyPoint(n)+new Vector3(Random.Range(-0.025f, 0.025f), Random.Range(-0.025f, 0.025f), Random.Range(-0.025f, 0.025f))).ToList(),
+            segmentPrefab2,
+            0.05f, 
+            () => Random.rotation, 
+            () => new Vector3(0.1f, 0.1f, 0.1f));
+        /*SpawnAlongLine(correctLine.Select(n=>transform.localToWorldMatrix.MultiplyPoint(n)+new Vector3(Random.Range(-0.025f, 0.025f), Random.Range(-0.025f, 0.025f), Random.Range(-0.025f, 0.025f))).ToList(),
+            segmentPrefab, 
+            0.5f, 
+            () => transform.rotation, 
+            () => new Vector3(1, 1, 1));*/
         correctLineRenderer.positionCount = correctLine.Count;
         for (int i = 0; i < correctLine.Count; i++)
             correctLineRenderer.SetPosition(i, transform.localToWorldMatrix.MultiplyPoint((Vector3)correctLine[i]+new Vector3(0, 0, -0.51f)));
@@ -106,7 +122,7 @@ public class WeldingPunctures : MonoBehaviourPunCallbacks, IInteractable, IMiniG
                     lineRenderer.positionCount = line.Count;
                     for (int i = 0; i < line.Count; i++)
                     {
-                        lineRenderer.SetPosition(i, transform.localToWorldMatrix.MultiplyPoint((Vector3)line[i]+new Vector3(0,0,-0.51f)));
+                        lineRenderer.SetPosition(i, transform.localToWorldMatrix.MultiplyPoint((Vector3)line[i]+new Vector3(0,0,-11)));
                     }
                 }
             }   
@@ -118,11 +134,19 @@ public class WeldingPunctures : MonoBehaviourPunCallbacks, IInteractable, IMiniG
         if (TryToVerify())
         {
             needToFix = false;
-            Destroy(this.gameObject);
-            EndInteraction(player);
+            End(player);
+            Camera.main.transform.position = player.transform.position;
+            Camera.main.transform.localRotation = Quaternion.identity;
+            photonView.RPC("Destry", RpcTarget.MasterClient);
         }
         line.Clear();
         lineRenderer.positionCount = 0;
+    }
+
+    [PunRPC]
+    private void Destry()
+    {
+        PhotonNetwork.Destroy(this.gameObject);
     }
 
     public bool TryToVerify()
@@ -161,7 +185,7 @@ public class WeldingPunctures : MonoBehaviourPunCallbacks, IInteractable, IMiniG
         return best;
     }
     
-    void EndInteraction(PlayerMovmant player)
+    void End(PlayerMovmant player)
     {
         StartCoroutine(SetCameraPosition(Vector3.zero, player.transform));
         IsCanInteracting = true;
@@ -193,7 +217,7 @@ public class WeldingPunctures : MonoBehaviourPunCallbacks, IInteractable, IMiniG
 
     public string GetMassage()
     {
-        if(needToFix) return "<color=#FF0000>Welding Punctures need to fix</color>\n";
+        if(needToFix) return $"<color=#FF0000>damage to the ship's hull in the “{place}”, movement suspended  </color>\n";
         return "";
     }
     
@@ -211,17 +235,14 @@ public class WeldingPunctures : MonoBehaviourPunCallbacks, IInteractable, IMiniG
 
         for (int i = 0; i < maxAttempts; i++)
         {
-            // Попытки найти подходящее направление
             bool found = false;
             for (int attempt = 0; attempt < 50; attempt++)
             {
-                // Выбираем случайный допустимый угол
                 float angle = Random.Range(-maxTurn, maxTurn);
                 Vector2 dir = Rotate(prevDir, angle);
 
                 Vector2 candidate = points[^1] + dir * segmentLength;
 
-                // Ограничение квадрата
                 if (Mathf.Abs(candidate.x) > 0.5f || Mathf.Abs(candidate.y) > 0.5f)
                     continue;
 
@@ -231,7 +252,6 @@ public class WeldingPunctures : MonoBehaviourPunCallbacks, IInteractable, IMiniG
                 break;
             }
 
-            // Если ничего не нашли — откат
             if (!found)
             {
                 if (points.Count > 1)
@@ -243,7 +263,6 @@ public class WeldingPunctures : MonoBehaviourPunCallbacks, IInteractable, IMiniG
                 else break;
             }
 
-            // Проверяем попадание в конец
             if (Vector2.Distance(points[^1], end) < segmentLength)
             {
                 points.Add(end);
@@ -251,12 +270,46 @@ public class WeldingPunctures : MonoBehaviourPunCallbacks, IInteractable, IMiniG
             }
         }
 
-        return points; // best-effort
+        return points;
     }
 
     private static Vector2 Rotate(Vector2 v, float angle)
     {
         float c = Mathf.Cos(angle), s = Mathf.Sin(angle);
         return new Vector2(v.x * c - v.y * s, v.x * s + v.y * c);
+    }
+    
+    public void SpawnAlongLine(
+        List<Vector3> points,
+        GameObject prefab,
+        float spacing,
+        Func<Quaternion> rotation,
+        Func<Vector3> scale)
+    {
+        if (points == null || points.Count < 2) return;
+
+        float distToNext = spacing;
+        float accumulated = 0f;
+
+        for (int i = 1; i < points.Count - 1; i++)
+        {
+            Vector3 a = points[i];
+            Vector3 b = points[i + 1];
+            float segmentLength = Vector3.Distance(a, b);
+
+            while (distToNext < segmentLength)
+            {
+                float t = distToNext / segmentLength;
+                Vector3 pos = Vector3.Lerp(a, b, t);
+
+                GameObject go = Instantiate(prefab, pos, rotation());
+                go.transform.localScale = scale();
+                OnDestroyEvent.AddListener((a)=>Destroy(go));
+                    
+                distToNext += spacing;
+            }
+
+            distToNext -= segmentLength;
+        }
     }
 }

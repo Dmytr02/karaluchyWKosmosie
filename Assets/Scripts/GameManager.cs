@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using Photon.Pun;
 using UnityEngine;
+using UnityEngine.UI;
 using Random = UnityEngine.Random;
 
 public class GameManager : MonoBehaviour
 {
     [SerializeField] private float neededTime;
-    [SerializeField] private TMPro.TMP_Text text;
+    [SerializeField] private Slider progressBar;
+    
     [SerializeField] private TMPro.TMP_Text errorsText;
     [SerializeField] private Vector2 breakesFrequency;
     private float _progress = 0;
@@ -30,9 +32,10 @@ public class GameManager : MonoBehaviour
     
     private void Update()
     {
-        if(!checkBreaked()) _progress -= Time.deltaTime;
+        if(!NetworkController.IsGameStarted) return;
+        if(!checkBreaked()) _progress -= Time.deltaTime * (ShipMaintenance.DirectionAccuracy-0.5f) * 2;
+        progressBar.value = 1-(_progress/neededTime);
         _timeToBreake -= Time.deltaTime;
-        text.text = new DateTime().AddSeconds(_progress).ToString("mm:ss");
         if (0 > _timeToBreake)
         {
             Breake();
@@ -46,33 +49,36 @@ public class GameManager : MonoBehaviour
 
     bool checkBreaked()
     {
-        errorsText.text = connectingWires.GetMassage() + shipMaintenance1.GetMassage() + string.Join("", weldingPunctures.Select(n=>n.GetMassage())) + ((int)Time.time%2==0?"_":"");
-        return connectingWires.needToFix || shipMaintenance1.needToFix || weldingPunctures.Count>0;
+        errorsText.text = $"estimated time of arrival: {new DateTime().AddSeconds(_progress).ToString("mm:ss")}\n" + shipMaintenance1.GetMassage() + connectingWires.GetMassage() + string.Join("", weldingPunctures.Select(n=>n.GetMassage())) + ( (weldingPunctures.Count<=0 && !connectingWires.needToFix) ? "all systems functioning normally":"") + ((int)Time.time%2==0?"_":"");
+        return weldingPunctures.Count>0;
     }
     
     private void Breake()
     {
         if(!PhotonNetwork.IsMasterClient) return;
-        int n = Random.Range(0, 3);
+        int n = Random.Range(0, 2);
         while (true)
         {
             if (n == 0 && !connectingWires.needToFix)
             {
-                connectingWires.StartMiniGame();
+                connectingWires.needToFix = true;
                 return;
             }
-            else if (n == 1 && !shipMaintenance1.needToFix)
+            else if (n == 1)
             {
-                shipMaintenance1.StartMiniGame();
-                shipMaintenance2.StartMiniGame();
-                return;
-            }else if (n == 2)
-            {
-                Transform t = weldingPuncturePlaceToSpown[Random.Range(0, weldingPuncturePlaceToSpown.Length)];
+                Transform[] transfoms = weldingPuncturePlaceToSpown.Where(n => n.gameObject.activeSelf).ToArray();
+                if(transfoms.Length <= 0) return;
+                Transform t = transfoms[Random.Range(0, transfoms.Length)];
                 Vector3 pos = t.localToWorldMatrix.MultiplyPoint(new Vector3(Random.Range(-0.5f, 0.5f), Random.Range(-0.5f, 0.5f), Random.Range(-0.5f, 0.5f)));
                 
                 weldingPunctures.Add(PhotonNetwork.Instantiate(weldingPuncturePrefab.name, pos, t.rotation).GetComponent<WeldingPunctures>());
-                weldingPunctures[^1].OnDestroyEvent.AddListener((weldingPuncture) => {weldingPunctures.Remove(weldingPuncture);});
+                weldingPunctures[^1].place = t.name;
+                weldingPunctures[^1].OnDestroyEvent.AddListener((weldingPuncture) =>
+                {
+                    weldingPunctures.Remove(weldingPuncture);
+                    t.gameObject.SetActive(true);
+                });
+                t.gameObject.SetActive(false);
             }
 
             n++;

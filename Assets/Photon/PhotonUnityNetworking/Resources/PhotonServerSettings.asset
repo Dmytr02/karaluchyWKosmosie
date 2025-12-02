@@ -49,6 +49,9 @@ MonoBehaviour:
   - isRunningRPC
   - StartMiniGame
   - StartMiniGameRPC
+  - SetNeedToFix
+  - StartGame
+  - Destry
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

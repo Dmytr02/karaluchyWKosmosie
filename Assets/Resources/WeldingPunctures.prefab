@@ -19,7 +19,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &2756579895367780929
 Transform:
   m_ObjectHideFlags: 0
@@ -29,7 +29,7 @@ Transform:
   m_GameObject: {fileID: 244011039866294209}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.4865, y: 0.4808, z: -0.496}
+  m_LocalPosition: {x: 0.635, y: 0.08, z: -0.496}
   m_LocalScale: {x: 0.1, y: 0.1, z: 0.1}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -400,7 +400,7 @@ MonoBehaviour:
   OwnershipTransfer: 0
   observableSearch: 2
   ObservedComponents: []
-  sceneViewId: 9
+  sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
 --- !u!114 &2922820502484642147
@@ -431,9 +431,12 @@ MonoBehaviour:
   lineRenderer: {fileID: 2114572889137355786}
   correctLineRenderer: {fileID: 534542243757557939}
   segmentLength: 0.05
+  segmentPrefab: {fileID: 2587235851905600223, guid: 74cebaa2b75c83242a26b401a43078b5, type: 3}
+  segmentPrefab2: {fileID: 4608434362629759281, guid: 951abf3486f183a4f84cad9fbdc1baea, type: 3}
   OnDestroyEvent:
     m_PersistentCalls:
       m_Calls: []
+  place: 
   needToFix: 1
 --- !u!120 &2114572889137355786
 LineRenderer:

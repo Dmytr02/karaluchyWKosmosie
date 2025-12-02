@@ -21,7 +21,18 @@ public class ConnectingWires : MonoBehaviourPunCallbacks, IInteractable, IMiniGa
     [SerializeField] private TMPro.TMP_Text timerText;
     public DateTime endTime = DateTime.Now; 
     
-    public bool needToFix = true;
+    private bool _needToFix = true;
+
+    public bool needToFix
+    {
+        get { return _needToFix; }
+        set {  photonView.RPC("SetNeedToFix", RpcTarget.All, value); } 
+    }
+    [PunRPC]
+    void SetNeedToFix(bool value)
+    {
+        _isCanInteracting = value;
+    }
     public bool IsCanInteracting
     {
         get { return _isCanInteracting; }
@@ -80,7 +91,7 @@ public class ConnectingWires : MonoBehaviourPunCallbacks, IInteractable, IMiniGa
         {
             RandomizeTargets();
             endTime = DateTime.Now.AddSeconds(time);
-            StartCoroutine(SetCameraPosition(new Vector3(0, 0, -100), transform));
+            StartCoroutine(SetCameraPosition(new Vector3(0, 0, -70), transform));
             IsCanInteracting = false;
             exitButton.gameObject.SetActive(true);
             SelfUI.instance.eventTriggerJumpButon.gameObject.SetActive(false);
